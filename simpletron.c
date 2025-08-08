@@ -1,32 +1,54 @@
-//ALuno: Rennan Furlaneto Collado
+//Aluno: Rennan Furlaneto Collado
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
 #include <string.h>
+#include <ctype.h>
 
 //definições de tamanho de memória e condição de parada
 #define TAM_MEM 100
 #define PARADA -99999
 
 // Operações de entrada e saída
-#define READ 10   // lê no terminal para local da memória específico
-#define WRITE 11  // Escreve a palavra de um local específico pro terminal
+#define READ 10
+#define WRITE 11
 
 // Operações de Carregamento/Armazenamento
-#define LOAD 20  // carrega uma palavra de um local pro acumulador
-#define STORE 21 // Armazena uma palavra do acumulador para o local na memória
+#define LOAD 20
+#define STORE 21
 
-// Operações Aritméticas (resultado no acumulador)
-#define ADD 30       // soma palavra de um local esp com a do acumulador
-#define SUBTRACT 31  // subtrai palavra de um local esp com a do acumulador
-#define DIVIDE 32    // divide palavra de um local esp na mem pela do acumulador
-#define MULTIPLY 33  // Multiplica local pelo acumulador
+// Operações Aritméticas
+#define ADD 30
+#define SUBTRACT 31
+#define DIVIDE 32
+#define MULTIPLY 33
 
 // Operações de transferência de Controle
-#define BRANCH 40     // desvia para local especifico na memoria
-#define BRANCHNEG 41  // desvia para local especifico se acumulador negativo
-#define BRANCHZERO 42 // desvia para local especifico se acumulador zero
-#define HALT 43       // Para programa
+#define BRANCH 40
+#define BRANCHNEG 41
+#define BRANCHZERO 42
+#define HALT 43
+
+// --- Funções auxiliares para nova entrada ---
+int getOpcodeFromName(const char *name) {
+    if (strcmp(name, "READ") == 0) return READ;
+    if (strcmp(name, "WRITE") == 0) return WRITE;
+    if (strcmp(name, "LOAD") == 0) return LOAD;
+    if (strcmp(name, "STORE") == 0) return STORE;
+    if (strcmp(name, "ADD") == 0) return ADD;
+    if (strcmp(name, "SUBTRACT") == 0) return SUBTRACT;
+    if (strcmp(name, "DIVIDE") == 0) return DIVIDE;
+    if (strcmp(name, "MULTIPLY") == 0) return MULTIPLY;
+    if (strcmp(name, "BRANCH") == 0) return BRANCH;
+    if (strcmp(name, "BRANCHNEG") == 0) return BRANCHNEG;
+    if (strcmp(name, "BRANCHZERO") == 0) return BRANCHZERO;
+    if (strcmp(name, "HALT") == 0) return HALT;
+    return -1;
+}
+
+void toUpperStr(char *str) {
+    for (; *str; str++) *str = toupper((unsigned char)*str);
+}
 
 void printRegister(int *accumulator, int *instructionCounter, int *instructionRegister, int *operationCode, int *operand){
     printf("\nREGISTERS: \n");
@@ -43,23 +65,42 @@ void zerarMemoria(int *memory){
     }
 }
 
-void insertCode(int *memory){
-    int i = 0, word;
-    do{
-        printf("%02d ? ", i);
-        scanf("%d", &word);
+// --- Nova versão do insertCode ---
+void insertCode(int *memory) {
+    int i = 0;
+    char opName[20];
+    int operand;
 
-        if (word == PARADA){
-            break;
+    do {
+        printf("%02d ? ", i);
+        scanf("%19s", opName);
+
+        if (strcmp(opName, "-99999") == 0) break;
+
+        toUpperStr(opName);
+        int opcode = getOpcodeFromName(opName);
+
+        if (opcode == -1) {
+            printf("Operação inválida! Tente novamente.\n");
+            continue;
         }
-        if (word > 9999 || word < -9999){
-            printf("Número fora do intervalo. Por favor insira novamente!\n");
-        }else{
-            memory[i] = word;
-            i++;
+
+        if (opcode != HALT) {
+            scanf("%d", &operand);
+            if (operand < 0 || operand >= TAM_MEM) {
+                printf("Operando fora do intervalo!\n");
+                continue;
+            }
+        } else {
+            operand = 0;
         }
-    }while(i < TAM_MEM);
-    printf("\n*** Carga do programa concluída     ***\n");
+
+        memory[i] = opcode * 100 + operand;
+        i++;
+
+    } while (i < TAM_MEM);
+
+    printf("\n*** Carga do programa concluída ***\n");
 }
 
 void executeCode(int *memory, int *accumulator, int *instructionCounter, int *instructionRegister, int *operationCode, int *operand){
@@ -73,10 +114,10 @@ void executeCode(int *memory, int *accumulator, int *instructionCounter, int *in
         switch (*operationCode){
         case READ:
             printf("Digite um número inteiro: ");
-            scanf("%d", &Aux);       //
+            scanf("%d", &Aux);
             if(Aux > 9999 || Aux < -9999){
                 printf("*** Número fora do intervalo de armazenamento. Tente novamente ***\n");
-                continue;   //não afeta o contador de instrução
+                continue;
             }else{
                 memory[*operand] = Aux;
             }
@@ -92,17 +133,14 @@ void executeCode(int *memory, int *accumulator, int *instructionCounter, int *in
             break;
         case ADD:
             Aux = *accumulator + memory[*operand];
-
             if(Aux > 9999 || Aux < -9999){
                 printf("\n*** Erro fatal. Estouro de Acumulador ***\n");
                 return;
             }
             *accumulator = Aux;
-            printf("SOMA: ACUMULADOR: %d", *accumulator);
             break;
         case SUBTRACT:
             Aux = *accumulator - memory[*operand];
-
             if(Aux > 9999 || Aux < -9999){
                 printf("\n*** Erro fatal. Estouro de Acumulador ***\n");
                 return;
@@ -114,7 +152,7 @@ void executeCode(int *memory, int *accumulator, int *instructionCounter, int *in
                 *accumulator /= memory[*operand];
             }else{
                 printf("\n*** Erro Fatal. Tentativa de divisão por zero ***\n");
-                printf("*** Execução do Simpletron encerrada de forma anormal. ***\n\n");
+                printf("*** Execução do Simpletron encerrada ***\n\n");
                 return;
             }
             break;
@@ -147,7 +185,7 @@ void executeCode(int *memory, int *accumulator, int *instructionCounter, int *in
             return;
         default:
             printf("*** Código inválido! ***\n");
-            printf("*** Execução do Simpletron encerrada de forma anormal. ***\n");
+            printf("*** Execução encerrada ***\n");
             return;
         }
 
@@ -176,15 +214,11 @@ int main(){
     zerarMemoria(memory);
 
     printf("*** Bem-vindo ao Simpletron!                         ***\n");
-    printf("*** Favor digitar seu programa, uma instrução        ***\n");
-    printf("*** (ou palavra de dados) por vez. Mostrarei         ***\n");
-    printf("*** o número do local e uma interrogação (?).        ***\n");
-    printf("*** Você, então, deverá digitar a palavra para esse  ***\n");
-    printf("*** local. Digite a sentinela -99999 para            ***\n");
-    printf("*** encerrar a entrada do seu programa.              ***\n\n");
+    printf("*** Digite seu programa usando nomes de operações    ***\n");
+    printf("*** Ex: READ 10 / ADD 15 / HALT                      ***\n");
+    printf("*** Digite -99999 para encerrar a entrada             ***\n\n");
 
     insertCode(memory);
-    printf("*** Iniciado a execução do programa ***\n");
     executeCode(memory, &accumulator, &instructionCounter, &instructionRegister, &operationCode, &operand);
     dump(memory, &accumulator, &instructionCounter, &instructionRegister, &operationCode, &operand);
 
